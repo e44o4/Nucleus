@@ -16,6 +16,7 @@ def get_db():
         db.close()
 
 
+# CREATE DEVICE
 @router.post("/devices")
 def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
 
@@ -33,3 +34,32 @@ def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
     db.refresh(new_device)
 
     return new_device
+
+
+# LIST ALL DEVICES
+@router.get("/devices")
+def list_devices(db: Session = Depends(get_db)):
+    devices = db.query(Device).all()
+    return devices
+
+
+# GET DEVICE BY ID
+@router.get("/devices/{device_id}")
+def get_device(device_id: int, db: Session = Depends(get_db)):
+    device = db.query(Device).filter(Device.id == device_id).first()
+    return device
+
+
+# DELETE DEVICE
+@router.delete("/devices/{device_id}")
+def delete_device(device_id: int, db: Session = Depends(get_db)):
+
+    device = db.query(Device).filter(Device.id == device_id).first()
+
+    if not device:
+        return {"error": "Device not found"}
+
+    db.delete(device)
+    db.commit()
+
+    return {"message": "Device deleted successfully"}
