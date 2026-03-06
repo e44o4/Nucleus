@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from models.command_schema import CommandRequest
 from services.device_connection import run_command_on_device
+from models.bulk_commnd_schema import BulkCommandRequest
 
 from database.db import SessionLocal
 from models.device import Device
@@ -87,3 +88,36 @@ def run_command(device_id: int, request: CommandRequest, db: Session = Depends(g
         "command": request.command,
         "output": output
     }
+
+# Bulk Command Run
+
+@router.post("/bulk/run-command")
+def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db)):
+
+    results = []
+
+    devices = db.query(Device).filter(Device.id.in_(request.device_ids)).all()
+
+    for device in devices:
+
+        try:
+            output = run_command_on_device(
+                device.ip_address,
+                device.username,
+                device.password,
+                request.command
+            )
+
+            results.append({
+                "device": device.name,
+                "output": output
+            })
+
+        except Exception as e:
+
+            results.append({
+                "device": device.name,
+                "error": str(e)
+            })
+
+    return {"results": results}
