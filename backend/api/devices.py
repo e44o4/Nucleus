@@ -7,7 +7,9 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import BackgroundTasks
 from models.job import Job
 from models.job_schema import JobResponse
-from services.job_runner import run_job
+from services.job_runner import run_job 
+from services.monitoring_service import check_devices
+from models.device_status import DeviceStatus
 
 
 from database.db import SessionLocal
@@ -163,9 +165,29 @@ def create_job(request: BulkCommandRequest,
         "status": "running"
     }
 
+# Job-ID
+
 @router.get("/jobs/{job_id}")
 def get_job(job_id: int, db: Session = Depends(get_db)):
 
     job = db.query(Job).filter(Job.id == job_id).first()
 
     return job
+
+# Device Monitor
+
+@router.post("/monitor/run")
+def run_monitor():
+
+    check_devices()
+
+    return {"status": "monitoring completed"}
+
+# Device Status
+
+@router.get("/monitor/status")
+def get_status(db: Session = Depends(get_db)):
+
+    data = db.query(DeviceStatus).all()
+
+    return data
