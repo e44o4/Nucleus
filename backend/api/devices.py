@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from models.command_schema import CommandRequest
 from services.device_connection import run_command_on_device
 from models.bulk_commnd_schema import BulkCommandRequest
+from concurrent.futures import ThreadPoolExecutor
+
 
 from database.db import SessionLocal
 from models.device import Device
@@ -94,11 +96,11 @@ def run_command(device_id: int, request: CommandRequest, db: Session = Depends(g
 @router.post("/bulk/run-command")
 def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db)):
 
-    results = []
-
     devices = db.query(Device).filter(Device.id.in_(request.device_ids)).all()
 
-    for device in devices:
+    results = []
+
+    def execute(device):
 
         try:
             output = run_command_on_device(
@@ -108,16 +110,23 @@ def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db))
                 request.command
             )
 
-            results.append({
+            return {
                 "device": device.name,
                 "output": output
-            })
+            }
 
         except Exception as e:
 
-            results.append({
+            return {
                 "device": device.name,
                 "error": str(e)
-            })
+            }
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+
+        futures = executor.map(execute, devices)
+
+        for result in futures:
+            results.append(result)
 
     return {"results": results}
