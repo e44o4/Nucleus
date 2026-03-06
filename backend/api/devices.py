@@ -10,6 +10,8 @@ from models.job_schema import JobResponse
 from services.job_runner import run_job 
 from services.monitoring_service import check_devices
 from models.device_status import DeviceStatus
+from models.config_schema import ConfigPushRequest
+from services.device_connection import push_config_to_device
 
 
 from database.db import SessionLocal
@@ -191,3 +193,39 @@ def get_status(db: Session = Depends(get_db)):
     data = db.query(DeviceStatus).all()
 
     return data
+
+# Push Config
+
+@router.post("/config/push")
+def push_config(request: ConfigPushRequest, db: Session = Depends(get_db)):
+
+    devices = db.query(Device).filter(Device.id.in_(request.device_ids)).all()
+
+    results = []
+
+    for device in devices:
+
+        try:
+
+            output = push_config_to_device(
+                device.ip_address,
+                device.username,
+                device.password,
+                request.commands
+            )
+
+            results.append({
+                "device": device.name,
+                "status": "success",
+                "output": output
+            })
+
+        except Exception as e:
+
+            results.append({
+                "device": device.name,
+                "status": "failed",
+                "error": str(e)
+            })
+
+    return {"results": results}
