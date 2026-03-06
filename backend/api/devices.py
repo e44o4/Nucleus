@@ -4,6 +4,10 @@ from models.command_schema import CommandRequest
 from services.device_connection import run_command_on_device
 from models.bulk_commnd_schema import BulkCommandRequest
 from concurrent.futures import ThreadPoolExecutor
+from fastapi import BackgroundTasks
+from models.job import Job
+from models.job_schema import JobResponse
+from services.job_runner import run_job
 
 
 from database.db import SessionLocal
@@ -130,3 +134,38 @@ def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db))
             results.append(result)
 
     return {"results": results}
+
+# Run-Jobs
+
+@router.post("/jobs/run-command")
+def create_job(request: BulkCommandRequest,
+               background_tasks: BackgroundTasks,
+               db: Session = Depends(get_db)):
+
+    job = Job(
+        status="running",
+        command=request.command
+    )
+
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    background_tasks.add_task(
+        run_job,
+        job.id,
+        request.device_ids,
+        request.command
+    )
+
+    return {
+        "job_id": job.id,
+        "status": "running"
+    }
+
+@router.get("/jobs/{job_id}")
+def get_job(job_id: int, db: Session = Depends(get_db)):
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+
+    return job
