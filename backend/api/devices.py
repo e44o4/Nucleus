@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from models.command_schema import CommandRequest
+from services.device_connection import run_command_on_device
 
 from database.db import SessionLocal
 from models.device import Device
@@ -63,3 +65,25 @@ def delete_device(device_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Device deleted successfully"}
+
+# Automation API
+@router.post("/devices/{device_id}/run-command")
+def run_command(device_id: int, request: CommandRequest, db: Session = Depends(get_db)):
+
+    device = db.query(Device).filter(Device.id == device_id).first()
+
+    if not device:
+        return {"error": "Device not found"}
+
+    output = run_command_on_device(
+        device.ip_address,
+        device.username,
+        device.password,
+        request.command
+    )
+
+    return {
+        "device": device.name,
+        "command": request.command,
+        "output": output
+    }
