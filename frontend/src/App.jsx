@@ -1,56 +1,62 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+
+import Dashboard from "./pages/Dashboard";
+import Devices from "./pages/Devices";
 
 export default function App() {
-
-  const [summary, setSummary] = useState({
-    total_devices: 0,
-    online_devices: 0,
-    offline_devices: 0,
-    alerts: 0
-  });
-
-  useEffect(() => {
-    axios.get("http://127.0.0.1:8000/dashboard/summary")
-      .then(res => {
-        setSummary(res.data);
-      })
-      .catch(err => {
-        console.error(err);
-      });
-  }, []);
-
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-10">
+    <BrowserRouter>
 
-      <h1 className="text-5xl font-bold mb-10">
-        Nucleus Network Automation Platform
-      </h1>
+      <div className="flex min-h-screen bg-gray-900 text-white">
 
-      <div className="grid grid-cols-4 gap-6">
+        {/* Sidebar */}
+        <div className="w-60 bg-gray-800 p-6">
 
-        <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
-          <h2 className="text-lg text-gray-400">Total Devices</h2>
-          <p className="text-3xl font-bold">{summary.total_devices}</p>
+          <h1 className="text-2xl font-bold mb-10">
+            Nucleus
+          </h1>
+
+          <nav className="flex flex-col gap-4">
+
+            <Link
+              to="/"
+              className="hover:bg-gray-700 p-2 rounded"
+            >
+              Dashboard
+            </Link>
+
+            <Link
+              to="/devices"
+              className="hover:bg-gray-700 p-2 rounded"
+            >
+              Devices
+            </Link>
+
+          </nav>
+
         </div>
 
-        <div className="bg-green-700 p-6 rounded-xl shadow-lg">
-          <h2 className="text-lg">Online</h2>
-          <p className="text-3xl font-bold">{summary.online_devices}</p>
-        </div>
+        {/* Main Content */}
+        <div className="flex-1 p-8">
 
-        <div className="bg-red-700 p-6 rounded-xl shadow-lg">
-          <h2 className="text-lg">Offline</h2>
-          <p className="text-3xl font-bold">{summary.offline_devices}</p>
-        </div>
+          <Routes>
 
-        <div className="bg-yellow-600 p-6 rounded-xl shadow-lg">
-          <h2 className="text-lg">Alerts</h2>
-          <p className="text-3xl font-bold">{summary.alerts}</p>
+            <Route
+              path="/"
+              element={<Dashboard />}
+            />
+
+            <Route
+              path="/devices"
+              element={<Devices />}
+            />
+
+          </Routes>
+
         </div>
 
       </div>
 
-    </div>
+    </BrowserRouter>
   );
 }
