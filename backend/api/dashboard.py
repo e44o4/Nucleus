@@ -37,8 +37,10 @@ def get_dashboard_summary(tenant_id: int, db: Session = Depends(get_db)):
         Device.status == "offline"
     ).count()
 
-    # Alerts (alerts table currently not tenant based)
-    alerts = db.query(Alert).count()
+    # ✅ Only count ACTIVE (unresolved) alerts
+    alerts = db.query(Alert).filter(
+        Alert.resolved == False
+    ).count()
 
     return {
         "total_devices": total_devices,
@@ -72,7 +74,10 @@ def get_device_health(tenant_id: int, db: Session = Depends(get_db)):
 @router.get("/dashboard/alerts")
 def get_active_alerts(db: Session = Depends(get_db)):
 
-    alerts = db.query(Alert).all()
+    # ✅ Only return ACTIVE (unresolved) alerts
+    alerts = db.query(Alert).filter(
+        Alert.resolved == False
+    ).all()
 
     result = []
 

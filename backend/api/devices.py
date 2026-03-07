@@ -99,18 +99,45 @@ def run_command(device_id: int, request: CommandRequest, db: Session = Depends(g
     if not device:
         return {"error": "Device not found"}
 
-    output = run_command_on_device(
-        device.ip_address,
-        device.username,
-        device.password,
-        request.command
-    )
+    try:
+        output = run_command_on_device(
+            device.ip_address,
+            device.username,
+            device.password,
+            request.command
+        )
 
-    return {
-        "device": device.name,
-        "command": request.command,
-        "output": output
-    }
+        # Save job record for history
+        job = Job(
+            status="success",
+            command=request.command,
+            results=f"Device: {device.name}\n{output}"
+        )
+        db.add(job)
+        db.commit()
+
+        return {
+            "device": device.name,
+            "command": request.command,
+            "output": output
+        }
+
+    except Exception as e:
+
+        # Save failed job record for history
+        job = Job(
+            status="failed",
+            command=request.command,
+            results=f"Device: {device.name}\nError: {str(e)}"
+        )
+        db.add(job)
+        db.commit()
+
+        return {
+            "device": device.name,
+            "command": request.command,
+            "error": str(e)
+        }
 
 
 # BULK COMMAND EXECUTION
@@ -134,14 +161,16 @@ def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db))
 
             return {
                 "device": device.name,
-                "output": output
+                "output": output,
+                "status": "success"
             }
 
         except Exception as e:
 
             return {
                 "device": device.name,
-                "error": str(e)
+                "error": str(e),
+                "status": "failed"
             }
 
     with ThreadPoolExecutor(max_workers=10) as executor:
@@ -151,7 +180,37 @@ def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db))
         for result in futures:
             results.append(result)
 
+    # Save bulk job record
+    import json
+    job = Job(
+        status="success",
+        command=request.command,
+        results=json.dumps(results)
+    )
+    db.add(job)
+    db.commit()
+
     return {"results": results}
+
+
+# LIST ALL JOBS (Job History)
+@router.get("/jobs")
+def list_jobs(db: Session = Depends(get_db)):
+
+    jobs = db.query(Job).order_by(Job.id.desc()).limit(100).all()
+
+    result = []
+
+    for job in jobs:
+        result.append({
+            "id": job.id,
+            "command": job.command,
+            "status": job.status,
+            "results": job.results,
+            "created_at": job.created_at
+        })
+
+    return result
 
 
 # CREATE JOB
