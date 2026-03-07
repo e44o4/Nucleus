@@ -34,6 +34,7 @@ def get_db():
 def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
 
     new_device = Device(
+        tenant_id=device.tenant_id,
         name=device.name,
         ip_address=device.ip_address,
         username=device.username,
@@ -51,23 +52,33 @@ def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
 
 # LIST ALL DEVICES
 @router.get("/devices")
-def list_devices(db: Session = Depends(get_db)):
-    devices = db.query(Device).all()
+def list_devices(tenant_id: int, db: Session = Depends(get_db)):
+
+    devices = db.query(Device).filter(Device.tenant_id == tenant_id).all()
+
     return devices
 
 
 # GET DEVICE BY ID
 @router.get("/devices/{device_id}")
-def get_device(device_id: int, db: Session = Depends(get_db)):
-    device = db.query(Device).filter(Device.id == device_id).first()
+def get_device(device_id: int, tenant_id: int, db: Session = Depends(get_db)):
+
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.tenant_id == tenant_id
+    ).first()
+
     return device
 
 
 # DELETE DEVICE
 @router.delete("/devices/{device_id}")
-def delete_device(device_id: int, db: Session = Depends(get_db)):
+def delete_device(device_id: int, tenant_id: int, db: Session = Depends(get_db)):
 
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.tenant_id == tenant_id
+    ).first()
 
     if not device:
         return {"error": "Device not found"}
