@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session
 
 from database.db import SessionLocal
 from models.device import Device
-from models.device_status import DeviceStatus
 from models.alert import Alert
 
 router = APIRouter()
 
 
+# Database dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -16,21 +16,28 @@ def get_db():
     finally:
         db.close()
 
+
 @router.get("/dashboard/summary")
 def get_dashboard_summary(tenant_id: int, db: Session = Depends(get_db)):
 
-    total_devices = db.query(Device).filter(Device.tenant_id == tenant_id).count()
+    # Total devices for tenant
+    total_devices = db.query(Device).filter(
+        Device.tenant_id == tenant_id
+    ).count()
 
+    # Online devices
     online_devices = db.query(Device).filter(
         Device.tenant_id == tenant_id,
         Device.status == "online"
     ).count()
 
+    # Offline devices
     offline_devices = db.query(Device).filter(
         Device.tenant_id == tenant_id,
         Device.status == "offline"
     ).count()
 
+    # Alerts (alerts table currently not tenant based)
     alerts = db.query(Alert).count()
 
     return {
@@ -40,17 +47,42 @@ def get_dashboard_summary(tenant_id: int, db: Session = Depends(get_db)):
         "alerts": alerts
     }
 
+
 @router.get("/dashboard/devices")
-def device_health(db: Session = Depends(get_db)):
+def get_device_health(tenant_id: int, db: Session = Depends(get_db)):
 
-    data = db.query(DeviceStatus).all()
+    devices = db.query(Device).filter(
+        Device.tenant_id == tenant_id
+    ).all()
 
-    return data
+    result = []
+
+    for device in devices:
+        result.append({
+            "id": device.id,
+            "name": device.name,
+            "ip_address": device.ip_address,
+            "status": device.status,
+            "location": device.location
+        })
+
+    return result
 
 
 @router.get("/dashboard/alerts")
-def active_alerts(db: Session = Depends(get_db)):
+def get_active_alerts(db: Session = Depends(get_db)):
 
     alerts = db.query(Alert).all()
 
-    return alerts
+    result = []
+
+    for alert in alerts:
+        result.append({
+            "id": alert.id,
+            "device_id": alert.device_id,
+            "message": alert.message,
+            "severity": alert.severity,
+            "created_at": alert.created_at
+        })
+
+    return result
