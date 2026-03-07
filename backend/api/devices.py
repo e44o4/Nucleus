@@ -1,26 +1,26 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
-from models.command_schema import CommandRequest
-from services.device_connection import run_command_on_device
-from models.bulk_commnd_schema import BulkCommandRequest
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import BackgroundTasks
-from models.job import Job
-from models.job_schema import JobResponse
-from services.job_runner import run_job 
-from services.monitoring_service import check_devices
-from models.device_status import DeviceStatus
-from models.config_schema import ConfigPushRequest
-from services.device_connection import push_config_to_device
-
 
 from database.db import SessionLocal
+
 from models.device import Device
 from models.device_schema import DeviceCreate
+from models.command_schema import CommandRequest
+from models.bulk_commnd_schema import BulkCommandRequest
+from models.job import Job
+from models.job_schema import JobResponse
+from models.device_status import DeviceStatus
+from models.config_schema import ConfigPushRequest
+
+from services.device_connection import run_command_on_device, push_config_to_device
+from services.job_runner import run_job
+from services.monitoring_service import check_devices
 
 router = APIRouter()
 
 
+# Database Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -40,7 +40,8 @@ def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
         username=device.username,
         password=device.password,
         device_type=device.device_type,
-        location=device.location
+        location=device.location,
+        status="unknown"
     )
 
     db.add(new_device)
@@ -50,7 +51,7 @@ def create_device(device: DeviceCreate, db: Session = Depends(get_db)):
     return new_device
 
 
-# LIST ALL DEVICES
+# LIST DEVICES
 @router.get("/devices")
 def list_devices(tenant_id: int, db: Session = Depends(get_db)):
 
@@ -59,7 +60,7 @@ def list_devices(tenant_id: int, db: Session = Depends(get_db)):
     return devices
 
 
-# GET DEVICE BY ID
+# GET DEVICE
 @router.get("/devices/{device_id}")
 def get_device(device_id: int, tenant_id: int, db: Session = Depends(get_db)):
 
@@ -88,7 +89,8 @@ def delete_device(device_id: int, tenant_id: int, db: Session = Depends(get_db))
 
     return {"message": "Device deleted successfully"}
 
-# Automation API
+
+# RUN COMMAND ON DEVICE
 @router.post("/devices/{device_id}/run-command")
 def run_command(device_id: int, request: CommandRequest, db: Session = Depends(get_db)):
 
@@ -110,8 +112,8 @@ def run_command(device_id: int, request: CommandRequest, db: Session = Depends(g
         "output": output
     }
 
-# Bulk Command Run
 
+# BULK COMMAND EXECUTION
 @router.post("/bulk/run-command")
 def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db)):
 
@@ -122,6 +124,7 @@ def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db))
     def execute(device):
 
         try:
+
             output = run_command_on_device(
                 device.ip_address,
                 device.username,
@@ -150,8 +153,8 @@ def run_bulk_command(request: BulkCommandRequest, db: Session = Depends(get_db))
 
     return {"results": results}
 
-# Run-Jobs
 
+# CREATE JOB
 @router.post("/jobs/run-command")
 def create_job(request: BulkCommandRequest,
                background_tasks: BackgroundTasks,
@@ -178,8 +181,8 @@ def create_job(request: BulkCommandRequest,
         "status": "running"
     }
 
-# Job-ID
 
+# GET JOB STATUS
 @router.get("/jobs/{job_id}")
 def get_job(job_id: int, db: Session = Depends(get_db)):
 
@@ -187,8 +190,8 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
 
     return job
 
-# Device Monitor
 
+# RUN MONITOR MANUALLY
 @router.post("/monitor/run")
 def run_monitor():
 
@@ -196,8 +199,8 @@ def run_monitor():
 
     return {"status": "monitoring completed"}
 
-# Device Status
 
+# DEVICE STATUS
 @router.get("/monitor/status")
 def get_status(db: Session = Depends(get_db)):
 
@@ -205,8 +208,8 @@ def get_status(db: Session = Depends(get_db)):
 
     return data
 
-# Push Config
 
+# PUSH CONFIG TO DEVICE
 @router.post("/config/push")
 def push_config(request: ConfigPushRequest, db: Session = Depends(get_db)):
 

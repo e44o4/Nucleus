@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from services.scheduler import start_scheduler
 from database.init_db import init_db

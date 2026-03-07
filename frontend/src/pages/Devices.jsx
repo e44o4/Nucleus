@@ -14,15 +14,21 @@ export default function Devices() {
     location: ""
   });
 
+  const API = "http://127.0.0.1:8000";
+  const TENANT = 1;
+
 
   const fetchDevices = () => {
-    axios.get("http://127.0.0.1:8000/devices?tenant_id=1")
-      .then((res) => {
+
+    axios
+      .get(`${API}/devices?tenant_id=${TENANT}`)
+      .then(res => {
         setDevices(res.data);
       })
-      .catch((err) => {
-        console.error("Error fetching devices:", err);
+      .catch(err => {
+        console.error(err);
       });
+
   };
 
 
@@ -32,58 +38,118 @@ export default function Devices() {
 
 
   const handleChange = (e) => {
+
     setForm({
       ...form,
       [e.target.name]: e.target.value
     });
+
   };
 
 
   const addDevice = () => {
 
-    const payload = {
-      tenant_id: 1,
+    axios.post(`${API}/devices`, {
+      tenant_id: TENANT,
       name: form.name,
       ip_address: form.ip_address,
       username: form.username,
       password: form.password,
       device_type: form.device_type,
       location: form.location
-    };
+    })
+    .then(() => {
 
-    console.log("Sending device:", payload);
+      fetchDevices();
 
-    axios
-      .post("http://127.0.0.1:8000/devices", payload)
-      .then(() => {
-
-        fetchDevices();
-
-        setForm({
-          name: "",
-          ip_address: "",
-          username: "",
-          password: "",
-          device_type: "",
-          location: ""
-        });
-
-      })
-      .catch((err) => {
-        console.error("Error creating device:", err);
+      setForm({
+        name: "",
+        ip_address: "",
+        username: "",
+        password: "",
+        device_type: "",
+        location: ""
       });
+
+    })
+    .catch(err => {
+      console.error(err);
+    });
+
+  };
+
+
+  const runCommand = (deviceId) => {
+
+    axios.post(`${API}/jobs/run-command`, {
+      device_id: deviceId,
+      command: "/system identity print"
+    })
+    .then(res => {
+
+      alert("Command executed successfully");
+      console.log(res.data);
+
+    })
+    .catch(err => {
+
+      console.error(err);
+      alert("Command failed");
+
+    });
+
+  };
+
+
+  const pushConfig = (deviceId) => {
+
+    axios.post(`${API}/config/push`, {
+      device_id: deviceId,
+      commands: [
+        "/system identity set name=Nucleus"
+      ]
+    })
+    .then(res => {
+
+      alert("Configuration pushed successfully");
+      console.log(res.data);
+
+    })
+    .catch(err => {
+
+      console.error(err);
+      alert("Config push failed");
+
+    });
+
+  };
+
+
+  const deleteDevice = (deviceId) => {
+
+    axios.delete(`${API}/devices/${deviceId}`)
+    .then(() => {
+
+      fetchDevices();
+
+    })
+    .catch(err => {
+
+      console.error(err);
+
+    });
+
   };
 
 
   return (
+
     <div className="text-white">
 
       <h1 className="text-4xl font-bold mb-6">
         Devices
       </h1>
 
-
-      {/* Add Device Form */}
 
       <div className="bg-gray-800 p-6 rounded-lg mb-8 max-w-4xl">
 
@@ -154,45 +220,67 @@ export default function Devices() {
       </div>
 
 
-      {/* Devices Table */}
-
       <table className="w-full bg-gray-800 rounded-lg overflow-hidden">
 
         <thead className="bg-gray-700">
+
           <tr>
             <th className="p-3 text-left">Name</th>
             <th className="p-3 text-left">IP</th>
             <th className="p-3 text-left">Status</th>
             <th className="p-3 text-left">Location</th>
+            <th className="p-3 text-left">Actions</th>
           </tr>
+
         </thead>
 
         <tbody>
 
-          {devices.map((device) => (
+          {devices.map(device => (
 
             <tr
               key={device.id}
               className="border-t border-gray-700 hover:bg-gray-700"
             >
 
-              <td className="p-3">
-                {device.name}
-              </td>
+              <td className="p-3">{device.name}</td>
+
+              <td className="p-3">{device.ip_address}</td>
 
               <td className="p-3">
-                {device.ip_address}
-              </td>
 
-              <td className="p-3">
                 {device.status === "online"
                   ? <span className="text-green-400">● Online</span>
                   : <span className="text-red-400">● Offline</span>
                 }
+
               </td>
 
-              <td className="p-3">
-                {device.location}
+              <td className="p-3">{device.location}</td>
+
+              <td className="p-3 space-x-2">
+
+                <button
+                  onClick={() => runCommand(device.id)}
+                  className="bg-blue-600 px-3 py-1 rounded"
+                >
+                  Run
+                </button>
+
+                <button
+                  onClick={() => pushConfig(device.id)}
+                  className="bg-yellow-600 px-3 py-1 rounded"
+                >
+                  Config
+                </button>
+
+                <button
+                  onClick={() => deleteDevice(device.id)}
+                  className="bg-red-600 px-3 py-1 rounded"
+                >
+                  Delete
+                </button>
+
               </td>
 
             </tr>
@@ -204,5 +292,7 @@ export default function Devices() {
       </table>
 
     </div>
+
   );
+
 }

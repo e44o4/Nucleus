@@ -1,4 +1,5 @@
 from netmiko import ConnectHandler
+from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
 
 
 def run_command_on_device(ip, username, password, command):
@@ -7,16 +8,27 @@ def run_command_on_device(ip, username, password, command):
         "device_type": "mikrotik_routeros",
         "host": ip,
         "username": username,
-        "password": password
+        "password": password,
+        "timeout": 10,           # seconds to wait for TCP connection
+        "banner_timeout": 15,    # seconds to wait for SSH banner
+        "auth_timeout": 15,      # seconds to wait for authentication
+        "session_timeout": 30,   # seconds before idle session closes
     }
 
-    connection = ConnectHandler(**device)
+    try:
+        connection = ConnectHandler(**device)
+        output = connection.send_command(command)
+        connection.disconnect()
+        return output
 
-    output = connection.send_command(command)
+    except NetmikoTimeoutException:
+        raise Exception(f"Connection timed out to device {ip}")
 
-    connection.disconnect()
+    except NetmikoAuthenticationException:
+        raise Exception(f"Authentication failed for device {ip}")
 
-    return output
+    except Exception as e:
+        raise Exception(f"SSH error on device {ip}: {str(e)}")
 
 
 def push_config_to_device(ip, username, password, commands):
@@ -25,13 +37,24 @@ def push_config_to_device(ip, username, password, commands):
         "device_type": "mikrotik_routeros",
         "host": ip,
         "username": username,
-        "password": password
+        "password": password,
+        "timeout": 10,
+        "banner_timeout": 15,
+        "auth_timeout": 15,
+        "session_timeout": 30,
     }
 
-    connection = ConnectHandler(**device)
+    try:
+        connection = ConnectHandler(**device)
+        output = connection.send_config_set(commands)
+        connection.disconnect()
+        return output
 
-    output = connection.send_config_set(commands)
+    except NetmikoTimeoutException:
+        raise Exception(f"Connection timed out to device {ip}")
 
-    connection.disconnect()
+    except NetmikoAuthenticationException:
+        raise Exception(f"Authentication failed for device {ip}")
 
-    return output
+    except Exception as e:
+        raise Exception(f"SSH config push error on device {ip}: {str(e)}")  
