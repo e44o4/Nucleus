@@ -10,16 +10,16 @@ export default function Dashboard() {
     alerts: 0
   });
 
-  useEffect(() => {
-    axios
-      .get("http://127.0.0.1:8000/dashboard/summary")
-      .then((res) => {
-        setSummary(res.data);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, []);
+useEffect(() => {
+  axios
+    .get("http://127.0.0.1:8000/dashboard/summary?tenant_id=1")
+    .then((res) => {
+      setSummary(res.data);
+    })
+    .catch((err) => {
+      console.error("Dashboard error:", err);
+    });
+}, []);
 
   return (
     <div>

@@ -16,15 +16,20 @@ def get_db():
     finally:
         db.close()
 
-
 @router.get("/dashboard/summary")
-def dashboard_summary(db: Session = Depends(get_db)):
+def get_dashboard_summary(tenant_id: int, db: Session = Depends(get_db)):
 
-    total_devices = db.query(Device).count()
+    total_devices = db.query(Device).filter(Device.tenant_id == tenant_id).count()
 
-    online_devices = db.query(DeviceStatus).filter(DeviceStatus.status == "online").count()
+    online_devices = db.query(Device).filter(
+        Device.tenant_id == tenant_id,
+        Device.status == "online"
+    ).count()
 
-    offline_devices = db.query(DeviceStatus).filter(DeviceStatus.status == "offline").count()
+    offline_devices = db.query(Device).filter(
+        Device.tenant_id == tenant_id,
+        Device.status == "offline"
+    ).count()
 
     alerts = db.query(Alert).count()
 
@@ -34,7 +39,6 @@ def dashboard_summary(db: Session = Depends(get_db)):
         "offline_devices": offline_devices,
         "alerts": alerts
     }
-
 
 @router.get("/dashboard/devices")
 def device_health(db: Session = Depends(get_db)):

@@ -5,8 +5,17 @@ from api.devices import router as device_router
 from api.dashboard import router as dashboard_router
 from api.tenants import router as tenant_router
 from api.auth import router as auth_router
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Nucleus Network Automation Platform")
+app = FastAPI(title="Nucleus")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # allow all origins (for development)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 init_db()
 
